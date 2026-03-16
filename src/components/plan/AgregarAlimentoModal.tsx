@@ -164,16 +164,16 @@ function PorcionInput({
   placeholder?: string
 }) {
   return (
-    <div className="flex items-center rounded-xl bg-white outline-1 -outline-offset-1 outline-gray-200 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-primary-500">
+    <div className="flex items-center rounded-xl bg-white pl-3 outline-1 -outline-offset-1 outline-gray-200 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-primary-500">
       <input
         type="number" min="0.1" step="0.1"
         placeholder={placeholder ?? '100'}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="block min-w-0 grow bg-transparent py-2.5 pl-3 pr-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+        className="block min-w-0 grow bg-transparent py-1.5 pr-3 pl-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
       />
-      <div className="shrink-0 pr-1.5">
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+      <div className="grid shrink-0 grid-cols-1 focus-within:relative">
+        <div className="col-start-1 row-start-1 flex rounded-md mr-1.5 overflow-hidden border border-gray-200 text-xs font-semibold">
           {([
             { val: 'g' as Unidad,        label: 'g'  },
             { val: 'ml' as Unidad,       label: 'ml' },
@@ -182,7 +182,7 @@ function PorcionInput({
             <button key={opt.val} type="button"
               onClick={() => onUnidadChange(opt.val)}
               className={cn(
-                'px-2.5 py-1.5 font-semibold transition-colors',
+                'px-2.5 py-1.5 transition-colors',
                 i > 0 && 'border-l border-gray-200',
                 unidad === opt.val
                   ? 'bg-primary-500 text-white'
