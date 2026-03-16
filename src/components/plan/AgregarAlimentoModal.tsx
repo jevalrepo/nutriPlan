@@ -959,18 +959,33 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
               <div className="space-y-5">
                 <ScanButton />
 
+                {/* Selector de unidad — ancho completo */}
+                <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
+                  {([
+                    { val: 'g',        label: 'Gramos'    },
+                    { val: 'ml',       label: 'Mililitros' },
+                    { val: 'cantidad', label: '# Unidades' },
+                  ] as { val: Unidad; label: string }[]).map(({ val, label }) => (
+                    <button key={val} type="button"
+                      onClick={() => {
+                        if (val !== 'cantidad' && unidad === 'cantidad')
+                          setForm(prev => ({ ...prev, porcion_g: r(cantidad * gramosPorUnidad) }))
+                        setUnidad(val)
+                      }}
+                      className={cn(
+                        'flex-1 py-2 text-xs font-semibold rounded-lg transition-all',
+                        unidad === val ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700',
+                      )}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Porción */}
-                <div className="space-y-2">
+                <div>
                   {unidad === 'cantidad' ? (
                     /* ── Modo cantidad ── */
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-gray-700">Cantidad</label>
-                        <UnidadToggle value={unidad} onChange={u => {
-                          setUnidad(u)
-                          if (u !== 'cantidad') setForm(prev => ({ ...prev, porcion_g: r(cantidad * gramosPorUnidad) }))
-                        }} />
-                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-xs font-medium text-gray-500 block">Número de unidades</label>
@@ -1015,44 +1030,35 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
                           </button>
                         </div>
                       )}
+                      <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
+                        value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
                     </div>
                   ) : (
                     /* ── Modo g / ml ── */
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-gray-700">Porción</label>
-                        <UnidadToggle value={unidad} onChange={setUnidad} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-500 block">Porción ({unidad})</label>
+                        <input type="number" min="0.1" step="0.1" placeholder="100"
+                          value={form.porcion_g || ''}
+                          onChange={e => setField('porcion_g', e.target.value)}
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                        />
+                        {refPorcion && (
+                          <button type="button"
+                            onClick={() => {
+                              setForm(prev => ({
+                                ...prev, porcion_g: refPorcion.g,
+                                ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
+                              }))
+                            }}
+                            className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
+                            {refPorcion.label} = {refPorcion.g}g
+                          </button>
+                        )}
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <input type="number" min="0.1" step="0.1" placeholder="100"
-                            value={form.porcion_g || ''}
-                            onChange={e => setField('porcion_g', e.target.value)}
-                            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                          />
-                          {refPorcion && (
-                            <button type="button"
-                              onClick={() => {
-                                setForm(prev => ({
-                                  ...prev, porcion_g: refPorcion.g,
-                                  ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
-                                }))
-                              }}
-                              className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
-                              {refPorcion.label} = {refPorcion.g}g
-                            </button>
-                          )}
-                        </div>
-                        <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
-                          value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
-                      </div>
+                      <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
+                        value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
                     </div>
-                  )}
-
-                  {/* Calorías cuando unidad='cantidad' */}
-                  {unidad === 'cantidad' && (
-                    <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
-                      value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
                   )}
                 </div>
 
