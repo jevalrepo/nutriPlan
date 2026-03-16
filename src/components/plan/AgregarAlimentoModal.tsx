@@ -172,25 +172,26 @@ function PorcionInput({
         onChange={e => onChange(e.target.value)}
         className="block min-w-0 grow bg-transparent py-2.5 pl-3 pr-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
       />
-      <div className="flex shrink-0 self-stretch border-l border-gray-200 text-xs">
-        {([
-          { val: 'g' as Unidad,        label: 'g'  },
-          { val: 'ml' as Unidad,       label: 'ml' },
-          { val: 'cantidad' as Unidad, label: '#'  },
-        ]).map((opt, i) => (
-          <button key={opt.val} type="button"
-            onClick={() => onUnidadChange(opt.val)}
-            className={cn(
-              'px-2.5 font-semibold transition-colors',
-              i > 0 && 'border-l border-gray-200',
-              i === 2 && 'rounded-r-xl',
-              unidad === opt.val
-                ? 'bg-primary-500 text-white'
-                : 'text-gray-500 hover:bg-gray-50',
-            )}>
-            {opt.label}
-          </button>
-        ))}
+      <div className="shrink-0 pr-1.5">
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+          {([
+            { val: 'g' as Unidad,        label: 'g'  },
+            { val: 'ml' as Unidad,       label: 'ml' },
+            { val: 'cantidad' as Unidad, label: '#'  },
+          ]).map((opt, i) => (
+            <button key={opt.val} type="button"
+              onClick={() => onUnidadChange(opt.val)}
+              className={cn(
+                'px-2.5 py-1.5 font-semibold transition-colors',
+                i > 0 && 'border-l border-gray-200',
+                unidad === opt.val
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-white text-gray-500 hover:bg-gray-50',
+              )}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
