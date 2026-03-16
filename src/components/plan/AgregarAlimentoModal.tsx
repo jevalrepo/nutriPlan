@@ -152,6 +152,49 @@ function UnidadToggle({ value, onChange }: { value: Unidad; onChange: (u: Unidad
   )
 }
 
+// ─── Input de porción con selector de unidad embebido ─────────────────────────
+
+function PorcionInput({
+  value, onChange, unidad, onUnidadChange, placeholder,
+}: {
+  value: number | string
+  onChange: (v: string) => void
+  unidad: Unidad
+  onUnidadChange: (u: Unidad) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="relative">
+      <input
+        type="number" min="0.1" step="0.1"
+        placeholder={placeholder ?? '100'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 pr-23 focus:outline-none focus:ring-2 focus:ring-primary-300"
+      />
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex rounded-md overflow-hidden border border-gray-200 text-xs">
+        {([
+          { val: 'g' as Unidad,        label: 'g'  },
+          { val: 'ml' as Unidad,       label: 'ml' },
+          { val: 'cantidad' as Unidad, label: '#'  },
+        ]).map((opt, i) => (
+          <button key={opt.val} type="button"
+            onClick={() => onUnidadChange(opt.val)}
+            className={cn(
+              'px-2.5 py-1 font-semibold transition-colors',
+              i > 0 && 'border-l border-gray-200',
+              unidad === opt.val
+                ? 'bg-primary-500 text-white'
+                : 'bg-white text-gray-500 hover:bg-gray-100',
+            )}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Fila de ingrediente ──────────────────────────────────────────────────────
 
 interface IngRowProps {
@@ -959,58 +1002,63 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
               <div className="space-y-5">
                 <ScanButton />
 
-                {/* Selector de unidad — ancho completo */}
-                <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
-                  {([
-                    { val: 'g',        label: 'Gramos'    },
-                    { val: 'ml',       label: 'Mililitros' },
-                    { val: 'cantidad', label: '# Unidades' },
-                  ] as { val: Unidad; label: string }[]).map(({ val, label }) => (
-                    <button key={val} type="button"
-                      onClick={() => {
-                        if (val !== 'cantidad' && unidad === 'cantidad')
-                          setForm(prev => ({ ...prev, porcion_g: r(cantidad * gramosPorUnidad) }))
-                        setUnidad(val)
-                      }}
-                      className={cn(
-                        'flex-1 py-2 text-xs font-semibold rounded-lg transition-all',
-                        unidad === val ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700',
-                      )}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                {/* Porción + selector embebido */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-500 block">
+                        {unidad === 'cantidad' ? 'Cantidad' : `Porción (${unidad})`}
+                      </label>
+                      <PorcionInput
+                        value={unidad === 'cantidad' ? (cantidad || '') : (form.porcion_g || '')}
+                        onChange={v => {
+                          if (unidad === 'cantidad') {
+                            const num = parseFloat(v) || 1
+                            setCantidad(num)
+                            aplicarCantidad(num, gramosPorUnidad)
+                          } else {
+                            setField('porcion_g', v)
+                          }
+                        }}
+                        unidad={unidad}
+                        onUnidadChange={u => {
+                          if (u !== 'cantidad' && unidad === 'cantidad')
+                            setForm(prev => ({ ...prev, porcion_g: r(cantidad * gramosPorUnidad) }))
+                          setUnidad(u)
+                        }}
+                        placeholder={unidad === 'cantidad' ? '1' : '100'}
+                      />
+                      {refPorcion && unidad !== 'cantidad' && (
+                        <button type="button"
+                          onClick={() => {
+                            setForm(prev => ({
+                              ...prev, porcion_g: refPorcion.g,
+                              ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
+                            }))
+                          }}
+                          className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
+                          {refPorcion.label} = {refPorcion.g}g
+                        </button>
+                      )}
+                    </div>
+                    <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
+                      value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
+                  </div>
 
-                {/* Porción */}
-                <div>
-                  {unidad === 'cantidad' ? (
-                    /* ── Modo cantidad ── */
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-gray-500 block">Número de unidades</label>
-                          <input type="number" min="0.1" step="0.1" placeholder="1"
-                            value={cantidad || ''}
-                            onChange={e => {
-                              const v = parseFloat(e.target.value) || 1
-                              setCantidad(v)
-                              aplicarCantidad(v, gramosPorUnidad)
-                            }}
-                            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300 text-right"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-gray-500 block">Gramos por unidad</label>
-                          <input type="number" min="0.1" step="0.1" placeholder="ej: 33"
-                            value={gramosPorUnidad || ''}
-                            onChange={e => {
-                              const v = parseFloat(e.target.value) || 1
-                              setGramosPorUnidad(v)
-                              aplicarCantidad(cantidad, v)
-                            }}
-                            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300 text-right"
-                          />
-                        </div>
+                  {/* Campos extra para modo # */}
+                  {unidad === 'cantidad' && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-500 block">Gramos por unidad</label>
+                        <input type="number" min="0.1" step="0.1" placeholder="ej: 55"
+                          value={gramosPorUnidad || ''}
+                          onChange={e => {
+                            const v = parseFloat(e.target.value) || 1
+                            setGramosPorUnidad(v)
+                            aplicarCantidad(cantidad, v)
+                          }}
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300 text-right"
+                        />
                       </div>
                       {form.porcion_g > 0 && (
                         <p className="text-xs text-gray-400">
@@ -1021,44 +1069,13 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-400">Ref:</span>
                           <button type="button"
-                            onClick={() => {
-                              setGramosPorUnidad(refPorcion.g)
-                              aplicarCantidad(cantidad, refPorcion.g)
-                            }}
+                            onClick={() => { setGramosPorUnidad(refPorcion.g); aplicarCantidad(cantidad, refPorcion.g) }}
                             className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
                             1 {refPorcion.label} = {refPorcion.g}g
                           </button>
                         </div>
                       )}
-                      <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
-                        value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
-                    </div>
-                  ) : (
-                    /* ── Modo g / ml ── */
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500 block">Porción ({unidad})</label>
-                        <input type="number" min="0.1" step="0.1" placeholder="100"
-                          value={form.porcion_g || ''}
-                          onChange={e => setField('porcion_g', e.target.value)}
-                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                        />
-                        {refPorcion && (
-                          <button type="button"
-                            onClick={() => {
-                              setForm(prev => ({
-                                ...prev, porcion_g: refPorcion.g,
-                                ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
-                              }))
-                            }}
-                            className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
-                            {refPorcion.label} = {refPorcion.g}g
-                          </button>
-                        )}
-                      </div>
-                      <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
-                        value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
-                    </div>
+                    </>
                   )}
                 </div>
 
