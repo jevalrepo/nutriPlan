@@ -1018,32 +1018,34 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
                     </div>
                   ) : (
                     /* ── Modo g / ml ── */
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700 block">Porción ({unidad})</label>
-                        <div className="flex gap-2">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-gray-700">Porción</label>
+                        <UnidadToggle value={unidad} onChange={setUnidad} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
                           <input type="number" min="0.1" step="0.1" placeholder="100"
                             value={form.porcion_g || ''}
                             onChange={e => setField('porcion_g', e.target.value)}
-                            className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
                           />
-                          <UnidadToggle value={unidad} onChange={setUnidad} />
+                          {refPorcion && (
+                            <button type="button"
+                              onClick={() => {
+                                setForm(prev => ({
+                                  ...prev, porcion_g: refPorcion.g,
+                                  ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
+                                }))
+                              }}
+                              className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
+                              {refPorcion.label} = {refPorcion.g}g
+                            </button>
+                          )}
                         </div>
-                        {refPorcion && (
-                          <button type="button"
-                            onClick={() => {
-                              setForm(prev => ({
-                                ...prev, porcion_g: refPorcion.g,
-                                ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
-                              }))
-                            }}
-                            className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
-                            {refPorcion.label} = {refPorcion.g}g
-                          </button>
-                        )}
+                        <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
+                          value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
                       </div>
-                      <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
-                        value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
                     </div>
                   )}
 
