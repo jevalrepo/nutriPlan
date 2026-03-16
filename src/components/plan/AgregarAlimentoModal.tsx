@@ -164,32 +164,30 @@ function PorcionInput({
   placeholder?: string
 }) {
   return (
-    <div className="flex items-center rounded-xl border border-gray-200 bg-white pl-3 transition-colors focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20">
+    <div className="flex items-center rounded-xl bg-white pl-3 outline-1 -outline-offset-1 outline-gray-200 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-primary-500">
       <input
         type="number" min="0.1" step="0.1"
         placeholder={placeholder ?? '100'}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="block min-w-0 grow bg-transparent py-2.5 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+        className="block min-w-0 grow bg-white py-1.5 pr-3 pl-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
       />
-      <div className="flex shrink-0 my-1.5 mr-1.5 overflow-hidden rounded-lg border border-gray-200 text-xs font-semibold">
-        {([
-          { val: 'g' as Unidad,        label: 'g'  },
-          { val: 'ml' as Unidad,       label: 'ml' },
-          { val: 'cantidad' as Unidad, label: '#'  },
-        ]).map((opt, i) => (
-          <button key={opt.val} type="button"
-            onClick={() => onUnidadChange(opt.val)}
-            className={cn(
-              'px-2.5 py-1.5 transition-colors',
-              i > 0 && 'border-l border-gray-200',
-              unidad === opt.val
-                ? 'bg-primary-500 text-white'
-                : 'bg-white text-gray-500 hover:bg-gray-50',
-            )}>
-            {opt.label}
-          </button>
-        ))}
+      <div className="grid shrink-0 grid-cols-1 focus-within:relative">
+        <select
+          value={unidad}
+          onChange={e => onUnidadChange(e.target.value as Unidad)}
+          aria-label="Unidad de medida"
+          className="col-start-1 row-start-1 w-full appearance-none rounded-r-xl bg-white py-1.5 pr-7 pl-3 text-sm text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-500 sm:text-sm/6"
+        >
+          <option value="g">g</option>
+          <option value="ml">ml</option>
+          <option value="cantidad">#</option>
+        </select>
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
+          className="pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-400">
+          <path fillRule="evenodd" clipRule="evenodd"
+            d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" />
+        </svg>
       </div>
     </div>
   )
