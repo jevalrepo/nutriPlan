@@ -164,15 +164,15 @@ function PorcionInput({
   placeholder?: string
 }) {
   return (
-    <div className="relative">
+    <div className="flex items-center rounded-xl bg-white outline-1 -outline-offset-1 outline-gray-200 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-primary-500">
       <input
         type="number" min="0.1" step="0.1"
         placeholder={placeholder ?? '100'}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 pr-23 focus:outline-none focus:ring-2 focus:ring-primary-300"
+        className="block min-w-0 grow bg-transparent py-2.5 pl-3 pr-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
       />
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex rounded-md overflow-hidden border border-gray-200 text-xs">
+      <div className="flex shrink-0 self-stretch border-l border-gray-200 text-xs">
         {([
           { val: 'g' as Unidad,        label: 'g'  },
           { val: 'ml' as Unidad,       label: 'ml' },
@@ -181,11 +181,12 @@ function PorcionInput({
           <button key={opt.val} type="button"
             onClick={() => onUnidadChange(opt.val)}
             className={cn(
-              'px-2.5 py-1 font-semibold transition-colors',
+              'px-2.5 font-semibold transition-colors',
               i > 0 && 'border-l border-gray-200',
+              i === 2 && 'rounded-r-xl',
               unidad === opt.val
                 ? 'bg-primary-500 text-white'
-                : 'bg-white text-gray-500 hover:bg-gray-100',
+                : 'text-gray-500 hover:bg-gray-50',
             )}>
             {opt.label}
           </button>
