@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   X, CheckCircle2, XCircle, Camera, Trash2, Plus,
-  ChefHat, Utensils, ChevronDown, ChevronUp, ScanLine,
+  ChefHat, Utensils, ChevronDown, ChevronUp, ScanLine, Flame,
+  Dumbbell, Zap, Droplets,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -122,35 +123,6 @@ function ingDesdeDB(alimento: AlimentoComun, porcion: number): IngredienteReceta
   }
 }
 
-// ─── Toggle de unidad ─────────────────────────────────────────────────────────
-
-function UnidadToggle({ value, onChange }: { value: Unidad; onChange: (u: Unidad) => void }) {
-  const opts: Array<{ val: Unidad; label: string }> = [
-    { val: 'g',        label: 'g'  },
-    { val: 'ml',       label: 'ml' },
-    { val: 'cantidad', label: '#'  },
-  ]
-  return (
-    <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs shrink-0" title="Unidad de medida">
-      {opts.map(({ val, label }, i) => (
-        <button
-          key={val}
-          type="button"
-          onClick={() => onChange(val)}
-          className={cn(
-            'px-2 py-1.5 font-semibold transition-colors',
-            i > 0 && 'border-l border-gray-200',
-            value === val
-              ? 'bg-primary-500 text-white'
-              : 'text-gray-500 hover:bg-gray-100',
-          )}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 // ─── Input de porción con selector de unidad embebido ─────────────────────────
 
@@ -170,25 +142,137 @@ function PorcionInput({
         placeholder={placeholder ?? '100'}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="block min-w-0 grow bg-white py-1.5 pr-3 pl-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
+        className="block min-w-0 grow bg-transparent py-2 pr-3 pl-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
       />
       <div className="grid shrink-0 grid-cols-1 focus-within:relative">
         <select
           value={unidad}
           onChange={e => onUnidadChange(e.target.value as Unidad)}
           aria-label="Unidad de medida"
-          className="col-start-1 row-start-1 w-full appearance-none rounded-r-xl bg-white py-1.5 pr-7 pl-3 text-sm text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-500 sm:text-sm/6"
+          className="col-start-1 row-start-1 w-full appearance-none rounded-r-xl bg-primary-500 py-1.5 pr-7 pl-3 text-sm text-white font-semibold focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 sm:text-sm/6"
         >
           <option value="g">g</option>
           <option value="ml">ml</option>
           <option value="cantidad">#</option>
         </select>
         <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
-          className="pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-400">
+          className="pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-white/70">
           <path fillRule="evenodd" clipRule="evenodd"
             d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" />
         </svg>
       </div>
+    </div>
+  )
+}
+
+// ─── Tarjeta de nutrientes (compartida entre simple y receta) ─────────────────
+
+const MACROS: Array<{
+  key: string; label: string
+  Icon: React.ComponentType<{ size?: number; className?: string }>
+  bg: string; iconCls: string; labelCls: string
+}> = [
+  { key: 'proteina_g',      label: 'Proteína', Icon: Dumbbell, bg: 'bg-green-50',  iconCls: 'text-green-500',  labelCls: 'text-green-700' },
+  { key: 'carbohidratos_g', label: 'Carbos',   Icon: Zap,      bg: 'bg-amber-50',  iconCls: 'text-amber-500',  labelCls: 'text-amber-700' },
+  { key: 'grasas_g',        label: 'Grasas',   Icon: Droplets, bg: 'bg-rose-50',   iconCls: 'text-rose-400',   labelCls: 'text-rose-600'  },
+]
+
+const MICROS = [
+  ['fibra_g',            'Fibra',       'g'],
+  ['azucar_g',           'Azúcar',      'g'],
+  ['grasas_saturadas_g', 'G. Sat.',     'g'],
+  ['sodio_mg',           'Sodio',       'mg'],
+  ['colesterol_mg',      'Colesterol',  'mg'],
+  ['calcio_mg',          'Calcio',      'mg'],
+  ['hierro_mg',          'Hierro',      'mg'],
+  ['vitamina_c_mg',      'Vit. C',      'mg'],
+  ['vitamina_d_ug',      'Vit. D',      'µg'],
+] as const
+
+function NutrientesCard({
+  values,
+  onChange,
+  expandidoMicros,
+  setExpandidoMicros,
+}: {
+  values: Record<string, number>
+  onChange?: (key: string, v: string) => void
+  expandidoMicros?: boolean
+  setExpandidoMicros?: (v: boolean) => void
+}) {
+  const editable = !!onChange
+
+  const numInput = (key: string, cls = '') =>
+    editable ? (
+      <input
+        type="number" min="0" step="0.1" placeholder="0"
+        value={values[key] ?? ''}
+        onChange={e => onChange!(key, e.target.value)}
+        className={cn('bg-transparent focus:outline-none placeholder:text-gray-300 text-right', cls)}
+      />
+    ) : (
+      <span className={cls}>{Math.round((values[key] ?? 0) * 10) / 10}</span>
+    )
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
+
+      {/* ── Calorías ── */}
+      <div className="flex items-center justify-between px-4 py-3.5 bg-red-50">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <Flame size={15} className="text-red-500" />
+          </div>
+          <span className="text-sm font-semibold text-red-700">Calorías</span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          {numInput('calorias', 'w-20 text-2xl font-bold text-gray-900 text-right')}
+          <span className="text-sm font-medium text-red-400">kcal</span>
+        </div>
+      </div>
+
+      {/* ── Macros ── */}
+      <div className="grid grid-cols-3 gap-2 p-3">
+        {MACROS.map(({ key, label, Icon, bg, iconCls, labelCls }) => (
+          <div key={key} className={cn('rounded-xl p-3 flex flex-col gap-1', bg)}>
+            <div className="flex items-center gap-1.5">
+              <Icon size={13} className={iconCls} />
+              <span className={cn('text-xs font-semibold truncate', labelCls)}>{label}</span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              {numInput(key, 'min-w-0 w-full text-xl font-bold text-gray-900 bg-transparent text-right')}
+              <span className="text-xs text-gray-400 shrink-0">g</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Micronutrientes ── */}
+      {expandidoMicros !== undefined && setExpandidoMicros && (
+        <div className="border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setExpandidoMicros(!expandidoMicros)}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+          >
+            <span>Micronutrientes {editable && <span className="text-gray-400 font-normal">(opcional)</span>}</span>
+            {expandidoMicros ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          {expandidoMicros && (
+            <div className="px-4 pb-3 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-gray-100 pt-3">
+              {MICROS.map(([key, label, unit]) => (
+                <div key={key} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-400 truncate">{label}</span>
+                  <div className="flex items-baseline gap-0.5 shrink-0">
+                    {numInput(key, 'w-12 text-xs font-semibold text-gray-700 text-right bg-transparent')}
+                    <span className="text-[10px] text-gray-400">{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -238,25 +322,18 @@ function IngredienteRow({
           <p className="text-xs text-gray-400 mt-0.5">{subtitulo()} · {Math.round(ing.calorias)} kcal</p>
         </div>
 
-        {/* Input cantidad / porción */}
-        <div className="flex items-center gap-1 shrink-0">
-          {unidad === 'cantidad' ? (
-            <input
-              type="number" min="0.1" step="0.1"
-              value={ing.cantidad ?? 1}
-              onChange={(e) => onChangeCantidad(parseFloat(e.target.value) || 1)}
-              className="w-14 text-right text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white"
-              title="Cantidad de unidades"
-            />
-          ) : (
-            <input
-              type="number" min="0.1" step="0.1"
-              value={ing.porcion_g || ''}
-              onChange={(e) => onChangePorcion(parseFloat(e.target.value) || 0)}
-              className="w-14 text-right text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white"
-            />
-          )}
-          <UnidadToggle value={unidad} onChange={onChangeUnidad} />
+        {/* Input cantidad / porción + unidad embebida */}
+        <div className="w-36 shrink-0">
+          <PorcionInput
+            value={unidad === 'cantidad' ? (ing.cantidad ?? '') : (ing.porcion_g ?? '')}
+            onChange={v => {
+              if (unidad === 'cantidad') onChangeCantidad(parseFloat(v) || 1)
+              else onChangePorcion(parseFloat(v) || 0)
+            }}
+            unidad={unidad}
+            onUnidadChange={onChangeUnidad}
+            placeholder={unidad === 'cantidad' ? '1' : '100'}
+          />
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
@@ -310,57 +387,18 @@ function IngredienteRow({
             />
           </div>
 
-          {/* Nutrientes editables */}
           {unidad !== 'cantidad' && (
             <p className="text-xs text-primary-600 font-medium">
               Edita los valores para {ing.porcion_g}{unidad}
             </p>
           )}
 
-          <div className="grid grid-cols-4 gap-2">
-            {([
-              ['calorias',        'Kcal',     'bg-orange-50 border-orange-200'],
-              ['proteina_g',      'Proteína', 'bg-blue-50 border-blue-200'],
-              ['carbohidratos_g', 'Carbs',    'bg-amber-50 border-amber-200'],
-              ['grasas_g',        'Grasas',   'bg-emerald-50 border-emerald-200'],
-            ] as const).map(([key, label, colors]) => (
-              <div key={key}>
-                <label className="text-[10px] font-medium text-gray-500 block mb-1">{label}</label>
-                <input type="number" min="0" step="0.1"
-                  value={(ing[key] as number) || ''}
-                  onChange={(e) => onChangeField(key, parseFloat(e.target.value) || 0)}
-                  className={cn('w-full text-right text-xs border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300', colors)}
-                />
-              </div>
-            ))}
-          </div>
-
-          <button type="button" onClick={() => setExpandirMicros(v => !v)}
-            className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-            {expandirMicros ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-            {expandirMicros ? 'Ocultar' : 'Ver'} micronutrientes
-          </button>
-
-          {expandirMicros && (
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                ['fibra_g',            'Fibra (g)'],   ['azucar_g',       'Azúcar (g)'],
-                ['grasas_saturadas_g', 'G.Sat. (g)'],  ['sodio_mg',       'Sodio (mg)'],
-                ['colesterol_mg',      'Colesterol'],   ['calcio_mg',      'Calcio (mg)'],
-                ['hierro_mg',          'Hierro (mg)'],  ['vitamina_c_mg',  'Vit. C (mg)'],
-                ['vitamina_d_ug',      'Vit. D (µg)'],
-              ] as const).map(([key, label]) => (
-                <div key={key}>
-                  <label className="text-[10px] font-medium text-gray-500 block mb-1">{label}</label>
-                  <input type="number" min="0" step="0.1"
-                    value={(ing[key] as number) || ''}
-                    onChange={(e) => onChangeField(key, parseFloat(e.target.value) || 0)}
-                    className="w-full text-right text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <NutrientesCard
+            values={ing as unknown as Record<string, number>}
+            onChange={(k, v) => onChangeField(k as keyof IngredienteReceta, parseFloat(v) || 0)}
+            expandidoMicros={expandirMicros}
+            setExpandidoMicros={setExpandirMicros}
+          />
         </div>
       )}
     </div>
@@ -789,7 +827,7 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
       />
 
       <div
-        className="relative w-full sm:max-w-2xl bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl animate-slide-up max-h-[88vh] flex flex-col"
+        className="relative w-full sm:max-w-3xl bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl animate-slide-up max-h-[90vh] flex flex-col"
         onPointerDown={e => { pointerDownOnBackdrop.current = false; e.stopPropagation() }}
       >
         {/* ── Header ── */}
@@ -809,7 +847,7 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
         </div>
 
         {/* ── Scroll body ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           <div className="p-6 space-y-5">
 
             {/* Toggle Simple / Receta */}
@@ -829,17 +867,55 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
             )}
 
             {/* Nombre */}
-            <Input
-              label={modoReceta ? 'Nombre de la receta' : 'Nombre del alimento'}
-              placeholder={modoReceta ? 'Ej: Licuado de proteína' : 'Ej: Pechuga de pollo'}
-              value={form.nombre}
-              onChange={e => {
-                setField('nombre', e.target.value)
-                if (!esEdicion && !modoReceta) setBusqueda(e.target.value)
-                if (errorEscaneo) setErrorEscaneo(null)
-              }}
-              autoFocus
-            />
+            {modoReceta ? (
+              <Input
+                label="Nombre de la receta"
+                placeholder="Ej: Licuado de proteína"
+                value={form.nombre}
+                onChange={e => { setField('nombre', e.target.value); if (errorEscaneo) setErrorEscaneo(null) }}
+                autoFocus
+              />
+            ) : (
+              <div className="flex gap-2 items-end">
+                <div className="flex-4 min-w-0 space-y-1">
+                  <label className="text-xs font-medium text-gray-500 block">Nombre del alimento</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Pechuga de pollo"
+                    value={form.nombre}
+                    onChange={e => {
+                      setField('nombre', e.target.value)
+                      if (!esEdicion) setBusqueda(e.target.value)
+                      if (errorEscaneo) setErrorEscaneo(null)
+                    }}
+                    autoFocus
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  />
+                </div>
+                <div className="flex-1 min-w-27.5 space-y-1">
+                  <label className="text-xs font-medium text-gray-500 block">Porción</label>
+                  <PorcionInput
+                    value={unidad === 'cantidad' ? (cantidad ?? '') : (form.porcion_g ?? '')}
+                    onChange={v => {
+                      if (unidad === 'cantidad') {
+                        const num = parseFloat(v) || 1
+                        setCantidad(num)
+                        aplicarCantidad(num, gramosPorUnidad)
+                      } else {
+                        setField('porcion_g', v)
+                      }
+                    }}
+                    unidad={unidad}
+                    onUnidadChange={u => {
+                      if (u !== 'cantidad' && unidad === 'cantidad')
+                        setForm(prev => ({ ...prev, porcion_g: r(cantidad * gramosPorUnidad) }))
+                      setUnidad(u)
+                    }}
+                    placeholder={unidad === 'cantidad' ? '1' : '100'}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Dropdown sugerencias (modo simple) */}
             {!modoReceta && resultadosLocales.length > 0 && (
@@ -952,37 +1028,30 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
 
                 {/* Totales */}
                 {ingredientes.length > 0 && totalesReceta && (
-                  <div className="rounded-xl overflow-hidden border border-gray-200">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total de la receta</p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">Etiqueta:</span>
-                        <UnidadToggle value={unidad} onChange={setUnidad} />
+                        <div className="grid grid-cols-1 focus-within:relative">
+                          <select
+                            value={unidad}
+                            onChange={e => setUnidad(e.target.value as 'g' | 'ml' | 'cantidad')}
+                            className="col-start-1 row-start-1 appearance-none rounded-lg border border-gray-200 bg-white py-1 pr-6 pl-2.5 text-xs font-medium text-gray-600 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-500"
+                          >
+                            <option value="g">g</option>
+                            <option value="ml">ml</option>
+                            <option value="cantidad">#</option>
+                          </select>
+                          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
+                            className="pointer-events-none col-start-1 row-start-1 mr-1.5 size-3 self-center justify-self-end text-gray-400">
+                            <path fillRule="evenodd" clipRule="evenodd"
+                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
-                    <div className="px-4 py-3 space-y-2">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-gray-900">{Math.round(totalesReceta.calorias)}</span>
-                        <span className="text-sm text-gray-400 font-medium">
-                          kcal · {(() => {
-                            if (unidad === 'cantidad') {
-                              const t = ingredientes.filter(i => (i.unidad ?? 'g') === 'cantidad').reduce((s, i) => s + (i.cantidad ?? 1), 0)
-                              return t > 0 ? `${t} unid. total` : '—'
-                            }
-                            const t = ingredientes.filter(i => (i.unidad ?? 'g') === unidad).reduce((s, i) => s + i.porcion_g, 0)
-                            return t > 0 ? `${Math.round(t)}${unidad} total` : '—'
-                          })()}
-                        </span>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <span className="inline-flex text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg px-2.5 py-1">P {totalesReceta.proteina_g}g</span>
-                        <span className="inline-flex text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-2.5 py-1">C {totalesReceta.carbohidratos_g}g</span>
-                        <span className="inline-flex text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-2.5 py-1">G {totalesReceta.grasas_g}g</span>
-                        {totalesReceta.fibra_g > 0 && (
-                          <span className="inline-flex text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 rounded-lg px-2.5 py-1">Fibra {totalesReceta.fibra_g}g</span>
-                        )}
-                      </div>
-                    </div>
+                    <NutrientesCard values={totalesReceta as unknown as Record<string, number>} />
                   </div>
                 )}
 
@@ -1000,56 +1069,27 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
               <div className="space-y-5">
                 <ScanButton />
 
-                {/* Porción + selector embebido */}
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-500 block">
-                        {unidad === 'cantidad' ? 'Cantidad' : `Porción (${unidad})`}
-                      </label>
-                      <PorcionInput
-                        value={unidad === 'cantidad' ? (cantidad || '') : (form.porcion_g || '')}
-                        onChange={v => {
-                          if (unidad === 'cantidad') {
-                            const num = parseFloat(v) || 1
-                            setCantidad(num)
-                            aplicarCantidad(num, gramosPorUnidad)
-                          } else {
-                            setField('porcion_g', v)
-                          }
+                {/* Extras: ref de porción y campos para modo # */}
+                {(refPorcion || unidad === 'cantidad') && (
+                  <div className="space-y-3">
+                    {refPorcion && unidad !== 'cantidad' && (
+                      <button type="button"
+                        onClick={() => {
+                          setForm(prev => ({
+                            ...prev, porcion_g: refPorcion.g,
+                            ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
+                          }))
                         }}
-                        unidad={unidad}
-                        onUnidadChange={u => {
-                          if (u !== 'cantidad' && unidad === 'cantidad')
-                            setForm(prev => ({ ...prev, porcion_g: r(cantidad * gramosPorUnidad) }))
-                          setUnidad(u)
-                        }}
-                        placeholder={unidad === 'cantidad' ? '1' : '100'}
-                      />
-                      {refPorcion && unidad !== 'cantidad' && (
-                        <button type="button"
-                          onClick={() => {
-                            setForm(prev => ({
-                              ...prev, porcion_g: refPorcion.g,
-                              ...(base100gRef.current ? calcNutrientes(base100gRef.current, refPorcion.g) : {}),
-                            }))
-                          }}
-                          className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
-                          {refPorcion.label} = {refPorcion.g}g
-                        </button>
-                      )}
-                    </div>
-                    <Input label="Calorías (kcal)" type="number" min="0" placeholder="0"
-                      value={form.calorias || ''} onChange={e => setField('calorias', e.target.value)} />
-                  </div>
-
-                  {/* Campos extra para modo # */}
-                  {unidad === 'cantidad' && (
+                        className="text-xs bg-gray-100 hover:bg-primary-100 hover:text-primary-700 text-gray-600 px-2.5 py-1 rounded-lg transition-colors font-medium">
+                        {refPorcion.label} = {refPorcion.g}g
+                      </button>
+                    )}
+                    {unidad === 'cantidad' && (
                     <>
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-gray-500 block">Gramos por unidad</label>
                         <input type="number" min="0.1" step="0.1" placeholder="ej: 55"
-                          value={gramosPorUnidad || ''}
+                          value={gramosPorUnidad ?? ''}
                           onChange={e => {
                             const v = parseFloat(e.target.value) || 1
                             setGramosPorUnidad(v)
@@ -1074,48 +1114,16 @@ export function AgregarAlimentoModal({ tipoComida, alimentoEditar, onGuardar, on
                         </div>
                       )}
                     </>
-                  )}
-                </div>
-
-                {/* Macros */}
-                <div className="grid grid-cols-3 gap-3">
-                  {([
-                    ['proteina_g',      'Proteína (g)',  'blue'],
-                    ['carbohidratos_g', 'Carbs (g)',     'amber'],
-                    ['grasas_g',        'Grasas (g)',    'emerald'],
-                  ] as const).map(([key, label, color]) => (
-                    <div key={key} className="space-y-1">
-                      <label className={`text-xs font-medium text-${color}-600 block`}>{label}</label>
-                      <input type="number" min="0" step="0.1" placeholder="0"
-                        value={form[key] || ''}
-                        onChange={e => setField(key, e.target.value)}
-                        className={`w-full text-sm border border-${color}-200 bg-${color}-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-${color}-300 text-right`}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Micronutrientes */}
-                <button type="button" onClick={() => setExpandidoMicros(!expandidoMicros)}
-                  className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 font-medium">
-                  {expandidoMicros ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  {expandidoMicros ? 'Ocultar' : 'Ver'} micronutrientes (opcional)
-                </button>
-
-                {expandidoMicros && (
-                  <div className="grid grid-cols-3 gap-3 pt-1">
-                    {([
-                      ['fibra_g','Fibra (g)'], ['azucar_g','Azúcar (g)'],
-                      ['grasas_saturadas_g','G.Sat. (g)'], ['sodio_mg','Sodio (mg)'],
-                      ['colesterol_mg','Colesterol (mg)'], ['calcio_mg','Calcio (mg)'],
-                      ['hierro_mg','Hierro (mg)'], ['vitamina_c_mg','Vit. C (mg)'],
-                      ['vitamina_d_ug','Vit. D (µg)'],
-                    ] as const).map(([key, label]) => (
-                      <Input key={key} label={label} type="number" min="0" step="0.1" placeholder="0"
-                        value={form[key] || ''} onChange={e => setField(key, e.target.value)} />
-                    ))}
+                    )}
                   </div>
                 )}
+
+                <NutrientesCard
+                  values={form as unknown as Record<string, number>}
+                  onChange={(k, v) => setField(k as keyof typeof form, v)}
+                  expandidoMicros={expandidoMicros}
+                  setExpandidoMicros={setExpandidoMicros}
+                />
               </div>
             )}
           </div>

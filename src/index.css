@@ -27,6 +27,16 @@
     box-sizing: border-box;
   }
 
+  /* Quitar flechas de inputs numéricos en todos los navegadores */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
