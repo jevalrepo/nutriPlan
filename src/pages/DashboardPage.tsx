@@ -137,10 +137,6 @@ export function DashboardPage() {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               Mis planes
             </h2>
-            <Button variant="primary" size="sm" onClick={() => setModalCrear(true)}>
-              <Plus size={14} />
-              Nuevo plan
-            </Button>
           </div>
 
           {loadingPlan ? (
